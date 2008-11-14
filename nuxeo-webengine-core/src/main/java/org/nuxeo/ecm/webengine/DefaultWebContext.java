@@ -30,6 +30,7 @@ import java.util.Map;
 
 import javax.script.Bindings;
 import javax.script.SimpleBindings;
+import javax.servlet.ServletRequest;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -44,6 +45,7 @@ import org.nuxeo.ecm.core.api.CoreSession;
 import org.nuxeo.ecm.core.api.DocumentModel;
 import org.nuxeo.ecm.core.api.DocumentRef;
 import org.nuxeo.ecm.webengine.actions.ActionDescriptor;
+import org.nuxeo.ecm.webengine.common.vh.VirtualHostHelper;
 import org.nuxeo.ecm.webengine.exceptions.WebResourceNotFoundException;
 import org.nuxeo.ecm.webengine.forms.FormData;
 import org.nuxeo.ecm.webengine.scripting.ScriptFile;
@@ -54,38 +56,46 @@ import org.python.core.PyDictionary;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
- *
+ * 
  */
 public class DefaultWebContext implements WebContext {
 
     private static final Log log = LogFactory.getLog(WebContext.class);
 
     protected final WebEngine engine;
+
     protected CoreSession session;
+
     protected boolean isCanceled = false;
 
     protected WebObject head; // the site root
+
     protected WebObject tail;
 
     protected final HttpServletRequest request;
+
     protected final HttpServletResponse response;
 
     protected final PathInfo pathInfo;
 
     protected final WebApplication app;
+
     protected FormData form;
 
-    protected final Map<String,Object> vars; // global vars to share between scripts
+    protected final Map<String, Object> vars; // global vars to share between
+
+    // scripts
 
     protected final List<File> scriptExecutionStack;
 
     protected String basePath;
+
     protected String applicationPath;
+
     private boolean isInitialized;
 
     // used to pass vars between client and server
     protected HashMap<String, Object> clientVars;
-
 
     public DefaultWebContext(WebApplication app, PathInfo pathInfo,
             HttpServletRequest req, HttpServletResponse resp) {
@@ -103,11 +113,14 @@ public class DefaultWebContext implements WebContext {
             throw new IllegalStateException("Context already initialized");
         }
         isInitialized = true;
-        if (request.getParameter("context") == null) { // if in top level context initialize client URL path
+        if (request.getParameter("context") == null) { // if in top level
+            // context initialize
+            // client URL path
             setClientUrlPath(getUrlPath());
         }
         DocumentRef documentRoot = pathInfo.getDocument();
-        if (documentRoot == null) { //TODO XXX: here we can add a custom root resolver
+        if (documentRoot == null) { // TODO XXX: here we can add a custom root
+            // resolver
             pathInfo.setTrailingPath(pathInfo.getTraversalPath());
             return;
         }
@@ -121,7 +134,7 @@ public class DefaultWebContext implements WebContext {
         addWebObject(doc.getName(), doc);
         Path traversalPath = pathInfo.getTraversalPath();
 
-        for (int i=0, len=traversalPath.segmentCount(); i<len; i++) {
+        for (int i = 0, len = traversalPath.segmentCount(); i < len; i++) {
             String name = traversalPath.segment(i);
             doc = getLastObject().traverse(name); // get next object if any
             if (doc != null) {
@@ -154,12 +167,14 @@ public class DefaultWebContext implements WebContext {
         return obj != null ? obj.getActions() : null;
     }
 
-    public Collection<ActionDescriptor> getActions(String category) throws WebException {
+    public Collection<ActionDescriptor> getActions(String category)
+            throws WebException {
         WebObject obj = getTargetObject();
         return obj != null ? obj.getActions(category) : null;
     }
 
-    public Map<String, Collection<ActionDescriptor>> getActionsByCategory() throws WebException {
+    public Map<String, Collection<ActionDescriptor>> getActionsByCategory()
+            throws WebException {
         WebObject obj = getTargetObject();
         return obj != null ? obj.getActionsByCategory() : null;
     }
@@ -182,8 +197,8 @@ public class DefaultWebContext implements WebContext {
 
     public String getApplicationPath() {
         if (applicationPath == null) {
-            applicationPath = new StringBuilder(256).append(getBasePath())
-                .append(pathInfo.getApplicationPath().toString()).toString();
+            applicationPath = new StringBuilder(256).append(getBasePath()).append(
+                    pathInfo.getApplicationPath().toString()).toString();
         }
         return applicationPath;
     }
@@ -195,7 +210,8 @@ public class DefaultWebContext implements WebContext {
             // resolve the document relative to the root
             Path docPath = document.getPath().makeAbsolute();
             Path path = null;
-            path = getRelativePath(head.getDocument().getPath().makeAbsolute(), docPath);
+            path = getRelativePath(head.getDocument().getPath().makeAbsolute(),
+                    docPath);
             if (path != null) {
                 buf.append(appPath);
             } else {
@@ -270,10 +286,10 @@ public class DefaultWebContext implements WebContext {
         return obj != null ? obj.getUrlPath() : null;
     }
 
-
     public ScriptFile getTargetScript() throws IOException {
         ScriptFile script = computeTargetScript();
-        if (script == null && tail != null) { // show default page only when the target document exists
+        if (script == null && tail != null) { // show default page only when
+            // the target document exists
             script = getFile(app.getDefaultPage());
         }
         return script;
@@ -298,9 +314,11 @@ public class DefaultWebContext implements WebContext {
                     return script;
                 }
             }
-        } else if (pathInfo.getAction() != null) { // there is a contextual object and an action
+        } else if (pathInfo.getAction() != null) { // there is a contextual
+            // object and an action
             return tail.getActionScript(pathInfo.getAction());
-        } else if (pathInfo.hasTrailingPath()) { // there is no action - use the trailing path
+        } else if (pathInfo.hasTrailingPath()) { // there is no action - use
+            // the trailing path
             Path trailingPath = pathInfo.getTrailingPath();
             String path = trailingPath.toString();
             ScriptFile script = getFile(path);
@@ -319,7 +337,8 @@ public class DefaultWebContext implements WebContext {
         if (c == '.') { // local path - use the path stack to resolve it
             File file = getCurrentScriptDirectory();
             if (file != null) {
-                // get the file local path - TODO this should be done in ScriptFile?
+                // get the file local path - TODO this should be done in
+                // ScriptFile?
                 file = new File(file, path).getCanonicalFile();
                 if (file.isFile()) {
                     return new ScriptFile(file);
@@ -332,7 +351,8 @@ public class DefaultWebContext implements WebContext {
                 log.warn("Relative path used but there is any running script");
                 path = new Path(path).makeAbsolute().toString();
             }
-        }  else if (c == '@' && tail != null && path.length() > 2 && path.charAt(1) == '@') {
+        } else if (c == '@' && tail != null && path.length() > 2
+                && path.charAt(1) == '@') {
             // workaround to support action references
             // an action shortcut
             ScriptFile script = tail.getActionScript(path.substring(2));
@@ -345,7 +365,8 @@ public class DefaultWebContext implements WebContext {
 
     public void pushScriptFile(File file) {
         if (scriptExecutionStack.size() > 64) { // stack limit
-            throw new IllegalStateException("Script execution stack overflowed. More than 64 calls between scripts");
+            throw new IllegalStateException(
+                    "Script execution stack overflowed. More than 64 calls between scripts");
         }
         if (file == null) {
             throw new IllegalArgumentException("Cannot push a null file");
@@ -356,9 +377,10 @@ public class DefaultWebContext implements WebContext {
     public File popScriptFile() {
         int size = scriptExecutionStack.size();
         if (size == 0) {
-            throw new IllegalStateException("Script execution stack underflowed. No script path to pop");
+            throw new IllegalStateException(
+                    "Script execution stack underflowed. No script path to pop");
         }
-        return scriptExecutionStack.remove(size-1);
+        return scriptExecutionStack.remove(size - 1);
     }
 
     public File getCurrentScriptFile() {
@@ -366,7 +388,7 @@ public class DefaultWebContext implements WebContext {
         if (size == 0) {
             return null;
         }
-        return scriptExecutionStack.get(size-1);
+        return scriptExecutionStack.get(size - 1);
     }
 
     public File getCurrentScriptDirectory() {
@@ -374,9 +396,8 @@ public class DefaultWebContext implements WebContext {
         if (size == 0) {
             return null;
         }
-        return scriptExecutionStack.get(size-1).getParentFile();
+        return scriptExecutionStack.get(size - 1).getParentFile();
     }
-
 
     public String getURI() {
         return request.getRequestURI();
@@ -388,29 +409,46 @@ public class DefaultWebContext implements WebContext {
 
     public String getUrlPath() {
         StringBuilder buf = new StringBuilder(request.getRequestURI().length());
-        String path = request.getContextPath();
-        if (path == null) {
-            path = "/nuxeo/site"; // for testing
+
+        String wesitepath = VirtualHostHelper.getWESitePath(request);
+        if (wesitepath != null) {
+            buf.append(wesitepath);
+        } else {
+            String path = request.getContextPath();
+
+            if (path == null) {
+                path = "/nuxeo/site"; // for testing
+            }
+            buf.append(path).append(request.getServletPath());
         }
-        buf.append(path).append(request.getServletPath());
-        path = request.getPathInfo();
+        // check virtualhostPath :
+
+        String path = request.getPathInfo();
         if (path != null) {
-            buf.append(path);
+            wesitepath += path;
         }
         return buf.toString();
     }
 
     public String getBasePath() {
         if (basePath == null) {
-            StringBuilder buf = new StringBuilder(request.getRequestURI().length());
-            String path = request.getContextPath();
-            if (path == null) {
-                path = "/nuxeo/site"; // for testing
+            StringBuilder buf = new StringBuilder(
+                    request.getRequestURI().length());
+            String wesitepath = VirtualHostHelper.getWESitePath(request);
+            if (wesitepath != null) {
+                buf.append(wesitepath);
+            } else {
+                String path = request.getContextPath();
+
+                if (path == null) {
+                    path = "/nuxeo/site"; // for testing
+                }
+                buf.append(path).append(request.getServletPath());
             }
-            buf.append(path).append(request.getServletPath());
+
             int len = buf.length();
-            if (len > 0 && buf.charAt(len-1) == '/') {
-                buf.setLength(len-1);
+            if (len > 0 && buf.charAt(len - 1) == '/') {
+                buf.setLength(len - 1);
             }
             basePath = buf.toString();
         }
@@ -431,7 +469,7 @@ public class DefaultWebContext implements WebContext {
         if (value == null) {
             value = request.getParameter(key);
             if (value == null) {
-                value =  vars.get(key);
+                value = vars.get(key);
             }
         }
         return value;
@@ -488,10 +526,11 @@ public class DefaultWebContext implements WebContext {
             if (script != null) {
                 render(script, ctx);
             } else {
-                throw new WebResourceNotFoundException("Template not found: "+template);
+                throw new WebResourceNotFoundException("Template not found: "
+                        + template);
             }
         } catch (IOException e) {
-            throw new WebException("Failed to get script file for: "+template);
+            throw new WebException("Failed to get script file for: " + template);
         }
     }
 
@@ -509,13 +548,14 @@ public class DefaultWebContext implements WebContext {
             String template = script.getURL();
             Bindings bindings = createBindings(map);
             if (log.isDebugEnabled()) {
-                log.debug("## Rendering: "+template);
+                log.debug("## Rendering: " + template);
             }
             pushScriptFile(script.getFile());
             app.getRendering().render(template, bindings, response.getWriter());
         } catch (Exception e) {
             e.printStackTrace();
-            throw new WebException("Failed to render template: "+script.getAbsolutePath(), e);
+            throw new WebException("Failed to render template: "
+                    + script.getAbsolutePath(), e);
         } finally {
             popScriptFile();
         }
@@ -525,33 +565,38 @@ public class DefaultWebContext implements WebContext {
         return runScript(script, null);
     }
 
-    public Object runScript(String script, Map<String, Object> args) throws WebException {
+    public Object runScript(String script, Map<String, Object> args)
+            throws WebException {
         try {
             ScriptFile sf = getFile(script);
             if (sf != null) {
                 return runScript(sf, args);
             } else {
-                throw new WebResourceNotFoundException("Script not found: "+script);
+                throw new WebResourceNotFoundException("Script not found: "
+                        + script);
             }
         } catch (IOException e) {
-            throw new WebException("Failed to get script file: "+script, e);
+            throw new WebException("Failed to get script file: " + script, e);
         }
     }
 
-    public Object runScript(ScriptFile script, Map<String, Object> args) throws WebException {
+    public Object runScript(ScriptFile script, Map<String, Object> args)
+            throws WebException {
         try {
             pushScriptFile(script.getFile());
-            return engine.getScripting().runScript(this, script, createBindings(args));
+            return engine.getScripting().runScript(this, script,
+                    createBindings(args));
         } catch (WebException e) {
             throw e;
         } catch (Exception e) {
-            throw new WebException("Failed to run script "+script, e);
+            throw new WebException("Failed to run script " + script, e);
         } finally {
             popScriptFile();
         }
     }
 
-    public Object exec(ScriptFile script, Map<String, Object> args) throws WebException {
+    public Object exec(ScriptFile script, Map<String, Object> args)
+            throws WebException {
         String ext = script.getExtension();
         if ("ftl".equals(ext)) {
             render(script, args);
@@ -591,10 +636,11 @@ public class DefaultWebContext implements WebContext {
     }
 
     public JSONObject toJSon(DocumentModel doc) throws WebException {
-        return toJSon(doc, (String[])null);
+        return toJSon(doc, (String[]) null);
     }
 
-    public JSONObject toJSon(DocumentModel doc, String ... schemas) throws WebException {
+    public JSONObject toJSon(DocumentModel doc, String... schemas)
+            throws WebException {
         return JSonHelper.doc2JSon(doc, schemas);
     }
 
@@ -610,6 +656,7 @@ public class DefaultWebContext implements WebContext {
 
     /**
      * XXX this is a shortcut method we need to remove
+     * 
      * @return
      */
     public String getFirstUnresolvedSegment() {
@@ -627,7 +674,7 @@ public class DefaultWebContext implements WebContext {
             return adapter.cast(getTargetDocument());
         } else if (adapter == CoreSession.class) {
             try {
-            return adapter.cast(getCoreSession());
+                return adapter.cast(getCoreSession());
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -642,7 +689,8 @@ public class DefaultWebContext implements WebContext {
     }
 
     public String getClientUrlPath() {
-        String path = (String)request.getSession(true).getAttribute("clientUrlPath");
+        String path = (String) request.getSession(true).getAttribute(
+                "clientUrlPath");
         if (path == null) {
             path = pathInfo.path.toString();
         }
@@ -661,12 +709,12 @@ public class DefaultWebContext implements WebContext {
     public Object getClientVariable(String key) {
         Object value = null;
         if (clientVars != null) {
-          value = clientVars.get(key);
+            value = clientVars.get(key);
         } else {
-            clientVars = new HashMap<String,Object>();
+            clientVars = new HashMap<String, Object>();
         }
         if (value == null) {
-            String str = getCookie("vars."+key);
+            String str = getCookie("vars." + key);
             if (str == null) {
                 return null;
             } else if (str.length() > 1) {
@@ -694,17 +742,19 @@ public class DefaultWebContext implements WebContext {
         clientVars.put(key, value);
         // TODO set cookie lazy when response is sent to the client
         if (value == null) {
-            setCookie("vars."+key, null);
+            setCookie("vars." + key, null);
         } else if (value.getClass() == String.class) {
-            setCookie("vars."+key, (String)value);
-        } else if (value instanceof Number || value instanceof Boolean || value instanceof CharSequence) {
-            setCookie("vars."+key, value.toString());
+            setCookie("vars." + key, (String) value);
+        } else if (value instanceof Number || value instanceof Boolean
+                || value instanceof CharSequence) {
+            setCookie("vars." + key, value.toString());
         } else {
-            setCookie("vars."+key, JSONSerializer.toJSON(value).toString());
+            setCookie("vars." + key, JSONSerializer.toJSON(value).toString());
         }
     }
 
-    //--------------------------------------------------------------------------- TODO internal API
+    // ---------------------------------------------------------------------------
+    // TODO internal API
 
     public Bindings createBindings(Map<String, Object> vars) {
         Bindings bindings = new SimpleBindings();
@@ -732,10 +782,9 @@ public class DefaultWebContext implements WebContext {
         }
     }
 
-   /**
-     * XXX should be this made part of the API? or maybe create
-     * WebContexFactory ..
-     *
+    /**
+     * XXX should be this made part of the API? or maybe create WebContexFactory ..
+     * 
      * @param name
      * @param doc
      * @return
@@ -770,10 +819,11 @@ public class DefaultWebContext implements WebContext {
      * returned.
      * <p>
      * The returned path is always starting with a '/'.
-     *
+     * 
      * @param basePath the base path
      * @param path the path
-     * @return the relative path, or null if the relative path cannot be computed
+     * @return the relative path, or null if the relative path cannot be
+     *         computed
      */
     public static Path getRelativePath(Path basePath, Path path) {
         int cnt = basePath.matchingFirstSegments(path);
