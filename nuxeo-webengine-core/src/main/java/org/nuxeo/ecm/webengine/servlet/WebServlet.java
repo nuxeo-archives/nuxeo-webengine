@@ -41,6 +41,7 @@ import org.nuxeo.ecm.webengine.WebContext;
 import org.nuxeo.ecm.webengine.WebEngine;
 import org.nuxeo.ecm.webengine.WebException;
 import org.nuxeo.ecm.webengine.WebObject;
+import org.nuxeo.ecm.webengine.exceptions.WebResourceNotFoundException;
 import org.nuxeo.ecm.webengine.scripting.ScriptFile;
 import org.nuxeo.ecm.webengine.session.UserSession;
 import org.nuxeo.runtime.api.Framework;
@@ -181,6 +182,7 @@ public class WebServlet extends HttpServlet {
             context.exec(script, null);
         } else {
             context.getResponse().setStatus(WebConst.SC_NOT_FOUND);
+            throw new WebResourceNotFoundException("Resource not found");
         }
         // System.out.println(">>>>>>>>>> RENDERING TOOK: " +
         // ((System.currentTimeMillis() - s) / 1000));
