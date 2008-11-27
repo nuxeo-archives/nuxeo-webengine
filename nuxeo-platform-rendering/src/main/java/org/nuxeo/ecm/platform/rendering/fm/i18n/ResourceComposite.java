@@ -23,6 +23,7 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.MissingResourceException;
 
 /**
  * A resource bundle for Nuxeo Rendering that holds a map of locals, allows
@@ -98,7 +99,11 @@ public class ResourceComposite extends ResourceBundle {
             }
             map.put(locale, bundle);
         }
-        return (String) bundle.getString(key);
+        try {
+            return (String) bundle.getString(key);
+        } catch (MissingResourceException e) {
+            return '!' + key + '!';
+        }
     }
 
 }
