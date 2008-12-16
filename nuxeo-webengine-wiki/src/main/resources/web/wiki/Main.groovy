@@ -10,7 +10,6 @@ import org.nuxeo.ecm.webengine.model.exceptions.*;
 import org.nuxeo.ecm.webengine.*;
 import org.nuxeo.ecm.core.api.*;
 
-
 @WebModule(name="wiki", facets = ["mainWiki"], base="base")
 @Path("/wikis")
 @Produces(["text/html; charset=UTF-8", "*/*; charset=UTF-8"])
@@ -41,15 +40,15 @@ public class Main extends DocumentModule {
            throw WebException.wrap(e);
       }
   }
-  
-  
+
+
   @POST
-  public Response doPost() {      
+  public Response doPost() {
       String name = ctx.getForm().getString("name");
       DocumentModel newDoc = DocumentHelper.createDocument(ctx, doc, name);
       return redirect(getPath()+'/'+newDoc.getName());
   }
-  
+
   @GET
   public Object doGet() {
     def docs = ctx.getCoreSession().getChildren(doc.getRef(), "Wiki");
@@ -82,11 +81,11 @@ public class Main extends DocumentModule {
   public Object handleError(WebApplicationException e) {
     if (e instanceof WebSecurityException) {
       return Response.status(401).entity(getTemplate("error/error_401.ftl")).build();
-    } else if (e instanceof WebResourceNotFoundException) {      
+    } else if (e instanceof WebResourceNotFoundException) {
       return Response.status(404).entity(getTemplate("error/error_404.ftl")).build();
     } else {
       return super.handleError(e);
-    } 
+    }
   }
 
   public String getLink(DocumentModel doc) {
