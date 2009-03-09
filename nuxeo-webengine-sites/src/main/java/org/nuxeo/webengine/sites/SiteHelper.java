@@ -20,6 +20,7 @@
 package org.nuxeo.webengine.sites;
 
 import java.io.Serializable;
+import java.util.Date;
 
 import org.nuxeo.ecm.core.api.Blob;
 import org.nuxeo.ecm.core.api.ClientException;
@@ -81,6 +82,8 @@ public class SiteHelper {
     }
 
 
+
+    
 //    public static String getValue(DocumentModel d, String xpath) throws  ClientException{
 //        Property p = d.getProperty(xpath);
 //        if ( p != null) {

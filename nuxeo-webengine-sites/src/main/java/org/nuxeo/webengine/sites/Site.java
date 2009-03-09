@@ -60,6 +60,8 @@ public class Site extends DefaultObject {
         assert args != null && args.length == 1;
         url = (String) args[0];
         ws = getWorkspaceByUrl(url);
+   
+       
     }
 
     @GET
