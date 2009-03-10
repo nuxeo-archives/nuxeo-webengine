@@ -22,7 +22,6 @@ package org.nuxeo.ecm.core.rest;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
@@ -51,6 +50,7 @@ import org.nuxeo.ecm.webengine.forms.FormData;
 import org.nuxeo.ecm.webengine.model.WebAdapter;
 import org.nuxeo.ecm.webengine.model.exceptions.IllegalParameterException;
 import org.nuxeo.ecm.webengine.model.impl.DefaultAdapter;
+import org.nuxeo.ecm.webengine.utils.CommentWorkflowFilter;
 import org.nuxeo.runtime.api.Framework;
 
 /**
@@ -149,7 +149,6 @@ public class CommentService extends DefaultAdapter {
      * 
      * @throws Exception
      */
-    @SuppressWarnings("unchecked")
     protected void startModeration(CoreSession session, DocumentModel doc)
             throws Exception {
 
@@ -198,7 +197,6 @@ public class CommentService extends DefaultAdapter {
     }
 
     public Response rejectComment() throws Exception {
-        // ??
         DocumentObject dobj = (DocumentObject) getTarget();
         CoreSession session = dobj.getCoreSession();
         DocumentModel pageDoc = dobj.getDocument();
@@ -207,7 +205,7 @@ public class CommentService extends DefaultAdapter {
 
         FormData form = ctx.getForm();
         String docId = form.getString(FormData.PROPERTY);
-
+        //get current comment
         DocumentModel comment = session.getDocument(new IdRef(docId));
 
         JbpmService jbpmService = Framework.getService(JbpmService.class);
@@ -218,13 +216,14 @@ public class CommentService extends DefaultAdapter {
             throw new ClientException("No moderation task found");
         }
 
+        //remove comment
+        cDoc.removeComment(comment);
         jbpmService.endTask(moderationTask.getId(), "moderation_reject", null,
                 null, null, (NuxeoPrincipal) session.getPrincipal());
 
         // Events.instance().raiseEvent(JbpmEventNames.WORKFLOW_TASK_COMPLETED);
 
-        // force comment manager to reload posts
-        // commentManagerActions.documentChanged();
+
         return redirect(dobj.getPath());
     }
 
@@ -232,12 +231,8 @@ public class CommentService extends DefaultAdapter {
         DocumentObject dobj = (DocumentObject) getTarget();
         CoreSession session = dobj.getCoreSession();
         DocumentModel pageDoc = dobj.getDocument();
-        CommentableDocument cDoc = dobj.getDocument().getAdapter(
-                CommentableDocument.class, true);
         FormData form = ctx.getForm();
         String docId = form.getString(FormData.PROPERTY);
-
-        DocumentModel comment = session.getDocument(new IdRef(docId));
 
         JbpmService jbpmService = Framework.getService(JbpmService.class);
         TaskInstance moderationTask = getModerationTask(jbpmService, session,
@@ -251,18 +246,15 @@ public class CommentService extends DefaultAdapter {
 
         // Events.instance().raiseEvent(JbpmEventNames.WORKFLOW_TASK_COMPLETED);
 
-        // force comment manager to reload posts
-        // commentManagerActions.documentChanged();
         return redirect(dobj.getPath());
     }
 
     protected ProcessInstance getModerationProcess(JbpmService jbpmService,
             CoreSession session, DocumentModel doc, String commentId)
             throws ClientException {
-        // TO DO: add filter??? to be used in getProcessInstances
 
         List<ProcessInstance> processes = jbpmService.getProcessInstances(doc,
-                (NuxeoPrincipal) session.getPrincipal(), null);
+                (NuxeoPrincipal) session.getPrincipal(), new CommentWorkflowFilter(commentId));
         if (processes != null && !processes.isEmpty()) {
             if (processes.size() > 1) {
                 // log.error("There are several moderation workflows running, "
