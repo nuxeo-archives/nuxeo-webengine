@@ -16,12 +16,7 @@
  */
 package org.nuxeo.webengine.utils;
 
-import static org.nuxeo.webengine.utils.SiteUtilsConstants.CONTEXTUAL_LINK;
-import static org.nuxeo.webengine.utils.SiteUtilsConstants.NUMBER_COMMENTS;
-import static org.nuxeo.webengine.utils.SiteUtilsConstants.WEBPAGE;
-import static org.nuxeo.webengine.utils.SiteUtilsConstants.WEB_CONTAINER_FACET;
-import static org.nuxeo.webengine.utils.SiteUtilsConstants.WORKSPACE;
-import static org.nuxeo.webengine.utils.SiteUtilsConstants.DELETED;
+import static org.nuxeo.webengine.utils.SiteUtilsConstants.*;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -79,18 +74,20 @@ public class SiteUtils {
 
             for (DocumentModel document : session.getChildren(
                     documentModel.getRef(), CONTEXTUAL_LINK)) {
-                try {
-                    Map<String, String> contextualLink = new HashMap<String, String>();
-                    contextualLink.put("title", SiteHelper.getString(document,
-                            "dc:title"));
-                    contextualLink.put("description", SiteHelper.getString(
-                            document, "dc:description"));
-                    contextualLink.put("link", SiteHelper.getString(document,
-                            "clink:link"));
-                    contextualLinks.add(contextualLink);
-                } catch (Exception e) {
-                    log.debug("Problems retrieving the contextual links for "
-                            + documentModel.getTitle());
+                if (!DELETED_LIFE_CYCLE.equals(document.getCurrentLifeCycleState())) {
+                    try {
+                        Map<String, String> contextualLink = new HashMap<String, String>();
+                        contextualLink.put("title", SiteHelper.getString(
+                                document, "dc:title"));
+                        contextualLink.put("description", SiteHelper.getString(
+                                document, "dc:description"));
+                        contextualLink.put("link", SiteHelper.getString(
+                                document, "clink:link"));
+                        contextualLinks.add(contextualLink);
+                    } catch (Exception e) {
+                        log.debug("Problems retrieving the contextual links for "
+                                + documentModel.getTitle());
+                    }
                 }
             }
         }
@@ -119,20 +116,24 @@ public class SiteUtils {
         try {
             DocumentModelList webPages = session.query(
                     String.format(
-                            "SELECT * FROM Document WHERE "
-                                    + " ecm:primaryType like 'WebPage' AND "
+                            "SELECT * FROM WebPage WHERE "
                                     + " ecm:path STARTSWITH '%s'"
                                     + " AND ecm:isCheckedInVersion = 0 AND ecm:isProxy = 0"
-                                    + " AND ecm:currentLifeCycleState != 'deleted' ORDER BY dc:modified DESC",
+                                    + " AND ecm:currentLifeCycleState != 'deleted' "
+                                    + " AND webp:publish = 1 ORDER BY dc:modified DESC",
                             getFirstWorkspaceParent(session, documentModel).getPathAsString()),
                     null, noPages, 0, true);
 
             for (DocumentModel webPage : webPages) {
                 Map<String, String> page = new HashMap<String, String>();
                 page.put("name", SiteHelper.getString(webPage, "dc:title"));
-                DocumentModel webContainer = getFirstWorkspaceParent(session, documentModel);
+                DocumentModel webContainer = getFirstWorkspaceParent(session,
+                        documentModel);
                 StringBuilder path = new StringBuilder(getWebContainersPath()).append("/");
-                path.append(JsonAdapter.getRelativPath(session.getParentDocument(webContainer.getRef()), webContainer)).append("/");
+                path.append(
+                        JsonAdapter.getRelativPath(
+                                session.getParentDocument(webContainer.getRef()),
+                                webContainer)).append("/");
                 path.append(JsonAdapter.getRelativPath(webContainer, webPage));
                 page.put("path", path.toString());
                 page.put("description", SiteHelper.getString(webPage,
@@ -159,7 +160,8 @@ public class SiteUtils {
         return pages;
     }
 
-    public static Response getLogoResponse(DocumentModel document) throws Exception {
+    public static Response getLogoResponse(DocumentModel document)
+            throws Exception {
         Blob blob = SiteHelper.getBlob(document, "webc:logo");
         if (blob != null) {
             return Response.ok().entity(blob).type(blob.getMimeType()).build();
@@ -181,12 +183,14 @@ public class SiteUtils {
         try {
             for (DocumentModel webPage : session.getChildren(document.getRef(),
                     WEBPAGE)) {
-                if (webPage.getCurrentLifeCycleState().equals(DELETED) == false) {
+                if (SiteHelper.getBoolean(webPage, "webp:publish", false)
+                        && !DELETED_LIFE_CYCLE.equals(webPage.getCurrentLifeCycleState())) {
                     Map<String, String> details = new HashMap<String, String>();
                     details.put("name", SiteHelper.getString(webPage,
                             "dc:title"));
                     details.put("path", JsonAdapter.getRelativPath(document,
                             webPage).toString());
+
                     webPages.add(details);
                 }
             }
@@ -236,11 +240,9 @@ public class SiteUtils {
         CoreSession session = context.getCoreSession();
         DocumentModelList comments = session.query(
                 String.format(
-                        "SELECT * FROM Document WHERE "
-                                + " ecm:primaryType like 'WebComment' "
-                                + " AND ecm:path STARTSWITH '%s'"
-                                + " AND ecm:isCheckedInVersion = 0 AND ecm:isProxy = 0"
-                                + " AND ecm:currentLifeCycleState != 'deleted' ORDER BY dc:modified DESC",
+                        "SELECT * FROM WebComment WHERE "
+                                + " ecm:path STARTSWITH '%s'"
+                                + " AND ecm:isCheckedInVersion = 0 AND ecm:isProxy = 0 ORDER BY dc:modified DESC",
                         ws.getPathAsString() + "/"), null, noComments, 0, true);
         List<Object> lastWebComments = new ArrayList<Object>();
         for (DocumentModel documentModel : comments) {
@@ -260,6 +262,12 @@ public class SiteUtils {
                 comment.put("author", getUserDetails(SiteHelper.getString(
                         documentModel, "webcmt:author")));
                 DocumentModel parentPage = WebCommentUtils.getPageForComment(documentModel);
+                // in case the WebPage is not published anymore or its life
+                // cycle state is deleted, skip the comment...
+                if (!SiteHelper.getBoolean(parentPage, "webp:publish", false)
+                        || DELETED_LIFE_CYCLE.equals(parentPage.getCurrentLifeCycleState())) {
+                    continue;
+                }
                 if (parentPage != null) {
                     comment.put("pageTitle", parentPage.getTitle());
                     comment.put("pagePath", JsonAdapter.getRelativPath(ws,
@@ -281,12 +289,13 @@ public class SiteUtils {
 
     /**
      * This method is used to retrieve user details for a certain username
+     *
      * @param username
      * @return user first name + user last name
      * @throws Exception
      */
-    public static String getUserDetails(String username) throws Exception{
-        UserManager userManager  = WebCommentUtils.getUserManager();
+    public static String getUserDetails(String username) throws Exception {
+        UserManager userManager = WebCommentUtils.getUserManager();
         NuxeoPrincipal principal = userManager.getPrincipal(username);
         if (principal == null)
             return StringUtils.EMPTY;
@@ -296,16 +305,18 @@ public class SiteUtils {
         }
         return principal.getFirstName() + " " + principal.getLastName();
     }
-    
+
     /**
      * This method is used to search a certain webPage between all the pages
      * under a <b>Workspace</b> that contains in title, description , main
      * content or attached files the given searchParam
+     *
      * @param ws - the workspace
      * @param searchParam - the search parameter
-     * @param nrWordsFromDescription - the number of words from the page description
-     * @return the <b>WebPage</b>-s found under a <b>Workspace</b> that match the 
-     * corresponding criteria
+     * @param nrWordsFromDescription - the number of words from the page
+     *            description
+     * @return the <b>WebPage</b>-s found under a <b>Workspace</b> that match
+     *         the corresponding criteria
      * @throws ClientException
      */
     public static List<Object> searchPagesInSite(DocumentModel ws,
@@ -321,7 +332,8 @@ public class SiteUtils {
                                     + " ecm:path STARTSWITH  '%s' "
                                     + " AND  ecm:fulltext LIKE '%s' "
                                     + " AND ecm:isCheckedInVersion = 0 AND ecm:isProxy = 0"
-                                    + " AND ecm:currentLifeCycleState != 'deleted' ORDER BY dc:modified DESC",
+                                    + " AND ecm:currentLifeCycleState != 'deleted' "
+                                    + " AND webp:publish = 1 ORDER BY dc:modified DESC",
                             ws.getPathAsString() + "/", searchParam), null, 0,
                     0, true);
             for (DocumentModel documentModel : results) {
@@ -364,7 +376,6 @@ public class SiteUtils {
         }
         return webPages;
     }
-    
 
     /**
      * This method is used to return the path to all the existing web

@@ -19,15 +19,21 @@
 
 package org.nuxeo.webengine.sites;
 
-import java.util.Vector;
-import java.util.List;
+import static org.nuxeo.webengine.utils.SiteUtilsConstants.DELETED_LIFE_CYCLE;
 
+import java.util.List;
+import java.util.Vector;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.nuxeo.ecm.core.api.ClientException;
 import org.nuxeo.ecm.core.api.CoreSession;
 import org.nuxeo.ecm.core.api.DocumentModel;
 import org.nuxeo.ecm.webengine.ui.tree.document.DocumentContentProvider;
 
 public class SiteContentProvider extends DocumentContentProvider {
+
+    private static final Log log = LogFactory.getLog(SiteContentProvider.class);
 
     private static final long serialVersionUID = 1L;
 
@@ -38,21 +44,23 @@ public class SiteContentProvider extends DocumentContentProvider {
     @Override
     public Object[] getChildren(Object obj) {
         Object[] objects = super.getChildren(obj);
-        List<Object> v = new Vector<Object>();
-        for (Object o : objects) {
-            DocumentModel d = (DocumentModel) o;
+        List<Object> children = new Vector<Object>();
+        for (Object object : objects) {
+            DocumentModel document = (DocumentModel) object;
             // filter pages
-            // WEB-214 
             try {
-                if (SiteHelper.getBoolean(d, "webp:pushtomenu", false)
-                        && d.getCurrentLifeCycleState().equals("deleted") == false) {
-                    v.add(d);
+                if (SiteHelper.getBoolean(document, "webp:publish", false)
+                        && SiteHelper.getBoolean(document, "webp:pushtomenu",
+                                false)
+                        && !DELETED_LIFE_CYCLE.equals(document.getCurrentLifeCycleState())) {
+                    children.add(document);
                 }
             } catch (ClientException e) {
-                e.printStackTrace();
+                log.debug(
+                        "Problems retrieving the current state of a document ... ",
+                        e);
             }
         }
-        return v.toArray();
+        return children.toArray();
     }
-
 }

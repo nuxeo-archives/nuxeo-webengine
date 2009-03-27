@@ -193,7 +193,7 @@ public class Site extends DefaultObject {
         }
     }
 
-    
+
     protected Map<String, Object> getSiteArguments() throws ClientException {
         Map<String, Object> root = new HashMap<String, Object>();
 
@@ -222,7 +222,7 @@ public class Site extends DefaultObject {
         CoreSession session = context.getCoreSession();
         try {
             DocumentModelList list = session.query(String.format(
-                    "SELECT * FROM Document WHERE ecm:mixinType = 'WebView' AND webc:url = \"%s\"",
+                    "SELECT * FROM Workspace WHERE ecm:mixinType = 'WebView' AND webc:url = \"%s\"",
                     url));
             if (list.size() != 0) {
                 return list.get(0);

@@ -4,6 +4,8 @@
 
   <extension target="org.nuxeo.ecm.platform.forms.layout.WebLayoutManager"
     point="layouts">
+    
+    <!-- Webpage layout definition  -->
     <layout name="webpage">
       <templates>
         <template mode="any">/layouts/layout_default_template.xhtml</template>
@@ -12,7 +14,10 @@
         <row>
           <widget>pushtomenu</widget>
         </row>
-       <!--  Not needed yet        
+        <row>
+          <widget>publish</widget>
+        </row>        
+        <!--  Not needed yet        
         <row>
           <widget>theme</widget>
         </row> -->
@@ -21,7 +26,7 @@
         </row>        
       </rows>
 
-       <!--  Not needed yet        
+      <!--  Not needed yet        
       <widget name="theme" type="template">
         <translated>true</translated>
         <fields>
@@ -47,8 +52,19 @@
          </property>
          </properties>
       </widget>
-
-
+      
+      <widget name="publish" type="template">
+        <translated>true</translated>
+        <fields>
+          <field>webp:publish</field>
+        </fields>
+         <properties mode="any">
+         <property name="required">true</property>
+         <property name="template">
+           /widgets/boolean_radio_widget_template.xhtml
+         </property>
+         </properties>
+      </widget>      
 
       <widget name="content" type="htmltext">
         <translated>true</translated>

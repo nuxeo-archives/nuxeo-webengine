@@ -25,10 +25,16 @@
     
     <resource name="webpage" prefix="webp" indexAllFields="true"
       type="schema">
+      <field name="pushtomenu" analyzer="boolean" stored="true"
+        indexed="true" sortable="false" type="boolean">
+      </field>
+      <field name="publish" analyzer="boolean" stored="true"
+        indexed="true" sortable="false" type="boolean">
+      </field>            
       <field name="content" analyzer="default" stored="true"
         indexed="true" type="Text" binary="false" sortable="true"
         sortOption="case-insensitive"/>
-    </resource>
+    </resource>    
 
   </extension> 
   
