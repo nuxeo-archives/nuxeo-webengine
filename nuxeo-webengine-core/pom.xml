@@ -6,10 +6,11 @@
   <parent>
     <groupId>org.nuxeo.ecm.webengine</groupId>
     <artifactId>nuxeo-webengine-parent</artifactId>
-    <version>5.2.1-SNAPSHOT</version>
+    <version>5.2.1-I20090709_1126</version>
   </parent>
 
   <artifactId>nuxeo-webengine-core</artifactId>
+  <version>5.2.1-FUEL-365</version>
   <name>Nuxeo WebEngine Core</name>
   <description>WebEngine's core services and model.</description>
 
