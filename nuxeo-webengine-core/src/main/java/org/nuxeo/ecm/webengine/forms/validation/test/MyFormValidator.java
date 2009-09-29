@@ -13,25 +13,29 @@
  *
  * Contributors:
  *     bstefanescu
- *
- * $Id$
  */
+package org.nuxeo.ecm.webengine.forms.validation.test;
 
-package org.nuxeo.ecm.webengine.forms.validation;
+import org.nuxeo.ecm.webengine.forms.FormDataProvider;
+import org.nuxeo.ecm.webengine.forms.validation.Form;
+import org.nuxeo.ecm.webengine.forms.validation.FormValidator;
+import org.nuxeo.ecm.webengine.forms.validation.ValidationException;
+
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  *
  */
-public class TypeException extends Exception {
+public class MyFormValidator implements FormValidator {
 
-    private static final long serialVersionUID = -7278027648077598245L;
-
-    public TypeException() {
+    public void validate(FormDataProvider data, Form form)
+            throws ValidationException {
+        MyForm myForm = (MyForm)form;
+        String pwd = myForm.getPassword();
+        String vpwd = myForm.getVerifyPassword();
+        if (!pwd.equals(vpwd)) {
+            throw new ValidationException().addInvalidField("verifyPassword");
+        }
     }
-
-    public TypeException(String message) {
-        super(message);
-    }
-
+    
 }

@@ -26,6 +26,7 @@ import java.text.MessageFormat;
 import java.text.ParseException;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.MissingResourceException;
@@ -38,6 +39,7 @@ import org.apache.commons.logging.LogFactory;
 import org.nuxeo.common.utils.Path;
 import org.nuxeo.ecm.core.api.CoreSession;
 import org.nuxeo.ecm.core.api.DocumentModel;
+import org.nuxeo.ecm.platform.web.common.vh.VirtualHostHelper;
 import org.nuxeo.ecm.webengine.WebEngine;
 import org.nuxeo.ecm.webengine.WebException;
 import org.nuxeo.ecm.webengine.forms.FormData;
@@ -68,6 +70,8 @@ public abstract class AbstractWebContext implements WebContext {
     public static Locale DEFAULT_LOCALE = Locale.ENGLISH;
 
     public static final String LOCALE_SESSION_KEY = "webengine_locale";
+
+    private static boolean isRepositoryDisabled = false;
 
     protected final WebEngine engine;
 
@@ -168,13 +172,27 @@ public abstract class AbstractWebContext implements WebContext {
         }
     }
 
-    public String getMessage(String key, String... args) {
+    public String getMessage(String key, Object... args) {
         Messages messages = module.getMessages();
         try {
             String msg = messages.getString(key, getLocale().getLanguage());
             if (args != null && args.length > 0) {
                 // format the string using given args
-                msg = MessageFormat.format(msg, (Object[]) args);
+                msg = MessageFormat.format(msg, args);
+            }
+            return msg;
+        } catch (MissingResourceException e) {
+            return '!' + key + '!';
+        }
+    }
+
+    public String getMessage(String key, List<Object> args) {
+        Messages messages = module.getMessages();
+        try {
+            String msg = messages.getString(key, getLocale().getLanguage());
+            if (args != null && args.size() > 0) {
+                // format the string using given args
+                msg = MessageFormat.format(msg, args.toArray());
             }
             return msg;
         } catch (MissingResourceException e) {
@@ -191,13 +209,27 @@ public abstract class AbstractWebContext implements WebContext {
         }
     }
 
-    public String getMessageL(String key, String locale, String... args) {
+    public String getMessageL(String key, String locale, Object... args) {
         Messages messages = module.getMessages();
         try {
             String msg = messages.getString(key, locale);
-            if (args != null && args.length > 0) { // format the string using
-                // given args
-                msg = MessageFormat.format(msg, (Object[]) args);
+            if (args != null && args.length > 0) {
+                // format the string using given args
+                msg = MessageFormat.format(msg, args);
+            }
+            return msg;
+        } catch (MissingResourceException e) {
+            return '!' + key + '!';
+        }
+    }
+
+    public String getMessageL(String key, String locale, List<Object> args) {
+        Messages messages = module.getMessages();
+        try {
+            String msg = messages.getString(key, locale);
+            if (args != null && args.size() > 0) {
+                // format the string using given args
+                msg = MessageFormat.format(msg, args.toArray());
             }
             return msg;
         } catch (MissingResourceException e) {
@@ -287,9 +319,11 @@ public abstract class AbstractWebContext implements WebContext {
 
     public String getCookie(String name) {
         Cookie[] cookies = request.getCookies();
-        for (Cookie cooky : cookies) {
-            if (name.equals(cooky.getName())) {
-                return cooky.getValue();
+        if (cookies != null) {
+            for (Cookie cooky : cookies) {
+                if (name.equals(cooky.getName())) {
+                    return cooky.getValue();
+                }
             }
         }
         return null;
@@ -309,21 +343,31 @@ public abstract class AbstractWebContext implements WebContext {
 
     public String getBasePath() {
         if (basePath == null) {
-            StringBuilder buf = new StringBuilder(
-                    request.getRequestURI().length());
-            String path = request.getContextPath();
-            if (path == null) {
-                path = "/nuxeo/site"; // for testing
+            String webenginePath = request.getHeader(WebContext.NUXEO_WEBENGINE_BASE_PATH);
+            if (",".equals(webenginePath)) {
+                // when the parameter is empty, request.getHeader return ',' on
+                // apache server.
+                webenginePath = "";
             }
-            buf.append(path).append(request.getServletPath());
-
-            int len = buf.length();
-            if (len > 0 && buf.charAt(len - 1) == '/') {
-                buf.setLength(len - 1);
-            }
-            basePath = buf.toString();
+            basePath = webenginePath != null ? webenginePath
+                    : getDefaultBasePath();
         }
         return basePath;
+    }
+
+    private String getDefaultBasePath() {
+        StringBuilder buf = new StringBuilder(request.getRequestURI().length());
+        String path = request.getContextPath();
+        if (path == null) {
+            path = "/nuxeo/site"; // for testing
+        }
+        buf.append(path).append(request.getServletPath());
+
+        int len = buf.length();
+        if (len > 0 && buf.charAt(len - 1) == '/') {
+            buf.setLength(len - 1);
+        }
+        return buf.toString();
     }
 
     public String getBaseURL() {
@@ -336,20 +380,12 @@ public abstract class AbstractWebContext implements WebContext {
     }
 
     public StringBuilder getServerURL() {
-        StringBuilder buf = new StringBuilder();
-        String scheme = request.getScheme();
-        int port = request.getServerPort();
-        String urlPath = request.getRequestURI();
-        if (urlPath.length() == 0) {
-            urlPath = "/";
+        StringBuilder url = new StringBuilder(
+                VirtualHostHelper.getServerURL(request));
+        if (url.toString().endsWith("/")) {
+            url.deleteCharAt(url.length() - 1);
         }
-        buf.append(scheme).append("://").append(request.getServerName());
-        if ("http".equals(scheme) && port != 80 || "https".equals(scheme)
-                && port != 443) {
-            buf.append(':');
-            buf.append(request.getServerPort());
-        }
-        return buf;
+        return url;
     }
 
     public String getURI() {
@@ -365,13 +401,7 @@ public abstract class AbstractWebContext implements WebContext {
     }
 
     public StringBuilder getUrlPathBuffer() {
-        StringBuilder buf = new StringBuilder(request.getRequestURI().length());
-        String path = request.getContextPath();
-        if (path == null) {
-            path = "/nuxeo/site"; // for testing
-        }
-        buf.append(path).append(request.getServletPath());
-
+        StringBuilder buf = new StringBuilder(getBasePath());
         String pathInfo = request.getPathInfo();
         if (pathInfo != null) {
             buf.append(pathInfo);
@@ -621,7 +651,7 @@ public abstract class AbstractWebContext implements WebContext {
         bindings.put("Module", module);
         bindings.put("Engine", engine);
         bindings.put("basePath", getBasePath());
-        bindings.put("skinPath", module.getSkinPathPrefix());
+        bindings.put("skinPath", getSkinPathPrefix());
         bindings.put("Root", getRoot());
         if (obj != null) {
             bindings.put("This", obj);
@@ -634,11 +664,43 @@ public abstract class AbstractWebContext implements WebContext {
                 bindings.put("Adapter", adapter);
             }
         }
-        try {
-            bindings.put("Session", getCoreSession());
-        } catch (Exception e) {
-            throw WebException.wrap("Failed to get a core session", e);
+        if (!isRepositoryDisabled) {
+            try {
+                bindings.put("Session", getCoreSession());
+            } catch (Exception e) {
+                throw WebException.wrap("Failed to get a core session", e);
+            }
         }
+    }
+
+    private String getSkinPathPrefix() {
+        if (Framework.getProperty(WebEngine.SKIN_PATH_PREFIX_KEY) != null) {
+            return module.getSkinPathPrefix();
+        }
+        String webenginePath = request.getHeader(WebContext.NUXEO_WEBENGINE_BASE_PATH);
+        if (webenginePath == null) {
+            return module.getSkinPathPrefix();
+        } else {
+            return getBasePath() + "/" + module.getName() + "/skin";
+        }
+    }
+
+    public static boolean isRepositorySupportDisabled() {
+        return isRepositoryDisabled;
+    }
+
+    /**
+     * Can be used by the application to disable injecting repository sessions
+     * in scripting context. If the application is not deploying a repository
+     * injecting a repository session will throw exceptions each time rendering
+     * is used.
+     *
+     * @param isRepositoryDisabled true to disable repository session injection,
+     *            false otherwise
+     */
+    public static void setIsRepositorySupportDisabled(
+            boolean isRepositoryDisabled) {
+        AbstractWebContext.isRepositoryDisabled = isRepositoryDisabled;
     }
 
 }

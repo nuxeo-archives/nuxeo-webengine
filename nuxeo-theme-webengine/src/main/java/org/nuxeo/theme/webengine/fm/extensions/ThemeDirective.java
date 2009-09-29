@@ -37,7 +37,6 @@ import org.nuxeo.ecm.webengine.model.WebContext;
 import org.nuxeo.theme.ApplicationType;
 import org.nuxeo.theme.Manager;
 import org.nuxeo.theme.NegotiationDef;
-import org.nuxeo.theme.models.InfoPool;
 import org.nuxeo.theme.negotiation.NegotiationException;
 import org.nuxeo.theme.themes.ThemeException;
 import org.nuxeo.theme.themes.ThemeManager;
@@ -45,7 +44,6 @@ import org.nuxeo.theme.types.TypeFamily;
 import org.nuxeo.theme.webengine.negotiation.WebNegotiator;
 
 import freemarker.core.Environment;
-import freemarker.ext.beans.BeansWrapper;
 import freemarker.template.SimpleScalar;
 import freemarker.template.Template;
 import freemarker.template.TemplateDirectiveBody;
@@ -56,7 +54,7 @@ import freemarker.template.TemplateModelException;
 
 /**
  * @author <a href="mailto:jmo@chalmers.se">Jean-Marc Orliaguet</a>
- * 
+ *
  */
 public class ThemeDirective implements TemplateDirectiveModel {
 
@@ -93,7 +91,7 @@ public class ThemeDirective implements TemplateDirectiveModel {
         if (themeUrl == null) {
             return;
         }
-        
+
         String rendered = "";
         try {
             rendered = renderTheme(themeUrl);
@@ -157,18 +155,18 @@ public class ThemeDirective implements TemplateDirectiveModel {
             return themeUrl;
         }
 
-        final String root = context.getModulePath();
         final ApplicationType application = (ApplicationType) Manager.getTypeRegistry().lookup(
-                TypeFamily.APPLICATION, root);
+                TypeFamily.APPLICATION, context.getModulePath(),
+                context.getModule().getName());
 
         if (application == null) {
-            log.error("Application not set for: " + root);
+            log.error(getErrorMessage("Application not set for: ", context));
             return null;
         }
 
         final NegotiationDef negotiation = application.getNegotiation();
         if (negotiation == null) {
-            log.error("Negotiation not set for: " + root);
+            log.error(getErrorMessage("Negotiation not set for: ", context));
             return null;
         }
 
@@ -183,7 +181,8 @@ public class ThemeDirective implements TemplateDirectiveModel {
         }
 
         if (strategy == null) {
-            log.error("Negotiation strategy not set for: " + root);
+            log.error(getErrorMessage("Negotiation strategy not set for: ",
+                    context));
             return null;
         }
 
@@ -191,11 +190,16 @@ public class ThemeDirective implements TemplateDirectiveModel {
             final String spec = new WebNegotiator(strategy, context).getSpec();
             themeUrl = new URL(spec);
         } catch (NegotiationException e) {
-            log.error("Could not get negotiation information for: " + root);
+            log.error(getErrorMessage(
+                    "Could not get negotiation information for: ", context));
             return null;
         }
 
         request.setAttribute("org.nuxeo.theme.url", themeUrl);
         return themeUrl;
+    }
+
+    private static String getErrorMessage(String message, WebContext context) {
+        return context.getModulePath() + "," + context.getModule().getName();
     }
 }

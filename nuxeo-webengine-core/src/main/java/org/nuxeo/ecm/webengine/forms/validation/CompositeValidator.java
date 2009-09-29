@@ -13,47 +13,24 @@
  *
  * Contributors:
  *     bstefanescu
- *
- * $Id$
  */
+package org.nuxeo.ecm.webengine.forms.validation;
 
-package org.nuxeo.ecm.webengine.forms;
+import java.util.ArrayList;
 
-import java.util.Hashtable;
-import java.util.Map;
-
-import org.nuxeo.ecm.webengine.forms.validation.Form;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  *
  */
-public class FormManager {
+public class CompositeValidator extends ArrayList<FieldValidator> implements FieldValidator {
 
-    protected final Map<String, Form> forms;
-
-
-    public FormManager() {
-        forms = new Hashtable<String, Form>();
+    private static final long serialVersionUID = -1851648770815748104L;    
+    
+    public void validate(String value, Object decoded) throws ValidationException {
+        for (int i=0,len=size(); i<len; i++) {
+            get(i).validate(value, decoded);
+        }
     }
-
-    public void registerForm(Form form) {
-        forms.put(form.getId(), form);
-    }
-
-    public void unregisterForm(String formId) {
-        forms.remove(formId);
-    }
-
-    /**
-     * @return the forms.
-     */
-    public Form[] getRegisteredForms() {
-        return forms.values().toArray(new Form[forms.size()]);
-    }
-
-    public Form getForm(String id) {
-        return forms.get(id);
-    }
-
+    
 }

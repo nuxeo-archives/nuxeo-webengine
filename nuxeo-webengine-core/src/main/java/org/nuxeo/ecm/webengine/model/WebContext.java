@@ -22,6 +22,7 @@ package org.nuxeo.ecm.webengine.model;
 import java.io.Writer;
 import java.security.Principal;
 import java.text.ParseException;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -44,6 +45,21 @@ import org.nuxeo.runtime.model.Adaptable;
  *
  */
 public interface WebContext extends Adaptable {
+
+    /**
+     * <p>
+     * This variable is used in a proxy setting. The proxy should send a header
+     * with this name. Webengine will assume that the base path of the
+     * application is this value.
+     * </p>
+     *
+     * <p>
+     * If your application is on server localhost:8080/nuxeo/site/myapp and you
+     * proxy it via mysite.com/myapp, then the header should have an empty
+     * string value.
+     * </p>
+     */
+    String NUXEO_WEBENGINE_BASE_PATH = "nuxeo-webengine-base-path";
 
     /**
      * Gets the current web application.
@@ -81,7 +97,16 @@ public interface WebContext extends Adaptable {
      * @param args
      * @return
      */
-    String getMessage(String key, String... args);
+    String getMessage(String key, Object... args);
+
+    /**
+     * The same as {@link #getMessage(String)} but with parameter support
+     *
+     * @param key
+     * @param args
+     * @return
+     */
+    String getMessage(String key, List<Object> args);
 
     /**
      * Same as {@link #getMessage(String)} but uses the given locale.
@@ -92,7 +117,25 @@ public interface WebContext extends Adaptable {
      */
     String getMessageL(String key, String locale);
 
-    String getMessageL(String key, String locale, String... args);
+    /**
+     * The same as {@link #getMessage(String)} but uses the given locale, with
+     * parameter support
+     *
+     * @param key
+     * @param args
+     * @return
+     */
+    String getMessageL(String key, String locale, Object... args);
+
+    /**
+     * The same as {@link #getMessage(String)} but uses the given locale, with
+     * parameter support
+     *
+     * @param key
+     * @param args
+     * @return
+     */
+    String getMessageL(String key, String locale, List<Object> args);
 
     /**
      * Get the context locale.
@@ -245,8 +288,10 @@ public interface WebContext extends Adaptable {
     String getBaseURL();
 
     /**
-     * Gets the server URL without any path. The returned string builder can be
-     * used to build the wanted URL.
+     * Gets the server URL without any path or trailing /. The returned string
+     * builder can be used to build the wanted URL. If the server is behind a
+     * proxy, return the server url of the proxy so writing the url in a webpage
+     * is safe.
      *
      * @return a string builder
      */
@@ -351,12 +396,12 @@ public interface WebContext extends Adaptable {
      * <p>
      * The path is resolved as following:
      * <ol>
-     * <li> if the path begin with a dot '.' then a local path is assumed and
+     * <li>if the path begin with a dot '.' then a local path is assumed and
      * the path will be resolved relative to the current executed script if any.
      * Note that the directory stack will be consulted as well. If there is no
      * current executed script then the path will be transformed into an
      * absolute path and next step is entered.
-     * <li> the resolving is delegated to the current
+     * <li>the resolving is delegated to the current
      * {@link Module#getFile(String)} that will try to resolve the path relative
      * to each directory in the directory stack
      * </ol>

@@ -32,7 +32,6 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 
 import org.jboss.resteasy.core.Dispatcher;
-import org.jboss.resteasy.core.SynchronousDispatcher;
 import org.jboss.resteasy.core.ThreadLocalResteasyProviderFactory;
 import org.jboss.resteasy.plugins.providers.ByteArrayProvider;
 import org.jboss.resteasy.plugins.providers.DefaultTextPlain;
@@ -49,7 +48,6 @@ import org.jboss.resteasy.specimpl.UriInfoImpl;
 import org.jboss.resteasy.spi.HttpRequest;
 import org.jboss.resteasy.spi.HttpResponse;
 import org.jboss.resteasy.spi.ResteasyProviderFactory;
-import org.jboss.util.threadpool.ThreadPoolFullException;
 import org.nuxeo.ecm.webengine.WebEngine;
 import org.nuxeo.ecm.webengine.model.WebContext;
 import org.nuxeo.ecm.webengine.session.UserSession;
@@ -61,7 +59,8 @@ import org.nuxeo.runtime.api.Framework;
  * Modifications:
  * <ul>
  * <li>Changed Dispatcher implementation.
- * <li>Added methods to register root resources without {@link Path} annotation.
+ * <li>Added methods to register root resources without {@link Path}
+ * annotation.
  * <li>Added WebEngine initialization
  * </ul>
  *
@@ -71,8 +70,13 @@ public class WebEngineServlet extends HttpServlet {
 
     private static final long serialVersionUID = 1L;
 
+    private static boolean isTaglibLoaded = false;
+
+    protected boolean enableJsp = false;;
+
     protected WebEngineDispatcher dispatcher;
-//    protected WebEngine engine;
+
+    // protected WebEngine engine;
 
     protected void initializeBuiltinProviders(
             ResteasyProviderFactory providerFactory) {
@@ -100,9 +104,15 @@ public class WebEngineServlet extends HttpServlet {
 
     @Override
     public void init(ServletConfig servletConfig) throws ServletException {
-        ResourceContainer rc = (ResourceContainer) Framework.getRuntime().getComponent(ResourceContainer.NAME);
+        super.init(servletConfig);
+        ResourceContainer rc = (ResourceContainer) Framework.getRuntime().getComponent(
+                ResourceContainer.NAME);
         dispatcher = rc.getDispatcher();
         initializeBuiltinProviders(dispatcher.getProviderFactory());
+        String v = Framework.getProperty("org.nuxeo.ecm.webengine.enableJsp");
+        if ("true".equals(v)) {
+            enableJsp = true;
+        }
     }
 
     @Override
@@ -120,36 +130,63 @@ public class WebEngineServlet extends HttpServlet {
         httpServletResponse.addHeader("Cache-Control", "no-store");
         httpServletResponse.addHeader("Cache-Control", "must-revalidate");
         httpServletResponse.addHeader("Expires", "0");
-        httpServletResponse.setDateHeader ("Expires", 0); //prevents caching at the proxy server
+        httpServletResponse.setDateHeader("Expires", 0); // prevents caching
+                                                            // at the proxy
+                                                            // server
+
+        if (enableJsp) {
+            WebEngine engine = Framework.getLocalService(WebEngine.class);
+            if (!isTaglibLoaded) {
+                synchronized (this) {
+                    if (!isTaglibLoaded) {
+                        engine.loadJspTaglib(this);
+                        isTaglibLoaded = true;
+                    }
+                }
+            }
+            engine.initJspRequestSupport(this, httpServletRequest,
+                    httpServletResponse);
+        }
 
         service(httpServletRequest.getMethod(), httpServletRequest,
                 httpServletResponse);
     }
 
-    public void service(String httpMethod, HttpServletRequest request, HttpServletResponse response) throws IOException {
+    public void service(String httpMethod, HttpServletRequest request,
+            HttpServletResponse response) throws IOException {
         WebContext ctx = null;
         try {
-            // classloader/deployment aware RestasyProviderFactory.  Used to have request specific
+            // classloader/deployment aware RestasyProviderFactory. Used to have
+            // request specific
             // ResteasyProviderFactory.getInstance()
             ResteasyProviderFactory defaultInstance = ResteasyProviderFactory.getInstance();
             if (defaultInstance instanceof ThreadLocalResteasyProviderFactory) {
-                ThreadLocalResteasyProviderFactory.push(dispatcher.getProviderFactory()); //BS modif
+                ThreadLocalResteasyProviderFactory.push(dispatcher.getProviderFactory()); // BS
+                                                                                            // modif
             }
             HttpHeaders headers = ServletUtil.extractHttpHeaders(request);
-            UriInfoImpl uriInfo = ServletUtil.extractUriInfo(request, request.getServletPath()); // BS modif
-            //org.jboss.resteasy.specimpl.patch.UriInfoImpl uriInfo = org.jboss.resteasy.specimpl.patch.UriInfoImpl.create(request); // BS: resteasy bug -  it is not auto escaping @ in literal part of @Path expression
+            UriInfoImpl uriInfo = ServletUtil.extractUriInfo(request,
+                    request.getServletPath()); // BS modif
+            // org.jboss.resteasy.specimpl.patch.UriInfoImpl uriInfo =
+            // org.jboss.resteasy.specimpl.patch.UriInfoImpl.create(request); //
+            // BS: resteasy bug - it is not auto escaping @ in literal part of
+            // @Path expression
 
             HttpResponse theResponse = createServletResponse(response);
-            HttpRequest in = createHttpRequest(httpMethod, request, headers, uriInfo, theResponse);
+            HttpRequest in = createHttpRequest(httpMethod, request, headers,
+                    uriInfo, theResponse);
 
             // bs: initialize webengine context
             ctx = new WebEngineContext(in, request);
             WebEngine.setActiveContext(ctx);
 
             try {
-                ResteasyProviderFactory.pushContext(HttpServletRequest.class, request);
-                ResteasyProviderFactory.pushContext(HttpServletResponse.class, response);
-                ResteasyProviderFactory.pushContext(SecurityContext.class, new ServletSecurityContext(request));
+                ResteasyProviderFactory.pushContext(HttpServletRequest.class,
+                        request);
+                ResteasyProviderFactory.pushContext(HttpServletResponse.class,
+                        response);
+                ResteasyProviderFactory.pushContext(SecurityContext.class,
+                        new ServletSecurityContext(request));
                 dispatcher.invoke(in, theResponse);
             } finally {
                 ResteasyProviderFactory.clearContextData();
@@ -157,8 +194,7 @@ public class WebEngineServlet extends HttpServlet {
         } catch (Throwable t) {
             t.printStackTrace();
             response.sendError(500);
-        }
-        finally {
+        } finally {
             ResteasyProviderFactory defaultInstance = ResteasyProviderFactory.getInstance();
             if (defaultInstance instanceof ThreadLocalResteasyProviderFactory) {
                 ThreadLocalResteasyProviderFactory.pop();
@@ -176,14 +212,17 @@ public class WebEngineServlet extends HttpServlet {
         }
     }
 
-    protected HttpRequest createHttpRequest(String httpMethod, HttpServletRequest request,
-            HttpHeaders headers, UriInfo uriInfo, HttpResponse theResponse) {
-        return new HttpServletInputMessage(request, theResponse, headers, uriInfo,
-                httpMethod.toUpperCase(), (SynchronousDispatcher) dispatcher);
+    protected HttpRequest createHttpRequest(String httpMethod,
+            HttpServletRequest request, HttpHeaders headers, UriInfo uriInfo,
+            HttpResponse theResponse) {
+        return new HttpServletInputMessage(request, theResponse, headers,
+                uriInfo, httpMethod.toUpperCase(),
+                dispatcher);
     }
 
     protected HttpResponse createServletResponse(HttpServletResponse response) {
-        return new HttpServletResponseWrapper(response, dispatcher.getProviderFactory());
+        return new HttpServletResponseWrapper(response,
+                dispatcher.getProviderFactory());
     }
 
 }

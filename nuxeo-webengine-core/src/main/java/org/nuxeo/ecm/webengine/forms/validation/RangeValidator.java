@@ -13,32 +13,40 @@
  *
  * Contributors:
  *     bstefanescu
- *
- * $Id$
  */
-
 package org.nuxeo.ecm.webengine.forms.validation;
 
-import org.nuxeo.ecm.webengine.forms.FormInstance;
 
 /**
+ * 
+ * 
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  *
  */
-public interface Constraint {
+public class RangeValidator implements FieldValidator {
 
-    Constraint newInstance();
+    protected boolean negate;
+    protected double min = Double.MIN_VALUE;
+    protected double max = Double.MAX_VALUE;
 
-    void init(Field field, String value);
+    public RangeValidator(double min, double max, boolean negate) {
+        this.min = min;
+        this.max = max;
+        this.negate = negate;
+    }
+    
+    public boolean validateNumber(Number value) {
+        double d = value.doubleValue();
+        boolean result = false;
+        result = d > min && d < max;
+        return negate ? !result : result;
+    }
 
-    void add(Constraint constraint);
-
-    boolean isContainer();
-
-    Status validate(FormInstance form,  Field field, String rawValue, Object value);
-
-    String getErrorMessage();
-
-    void setErrorMessage(String errorMessage);
+        
+    public void validate(String value, Object decoded) throws ValidationException {
+        if (!validateNumber((Number)decoded)) {
+            throw new ValidationException();
+        }
+    }
 
 }

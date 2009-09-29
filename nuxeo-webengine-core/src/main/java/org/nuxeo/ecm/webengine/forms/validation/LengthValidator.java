@@ -13,33 +13,34 @@
  *
  * Contributors:
  *     bstefanescu
- *
- * $Id$
  */
+package org.nuxeo.ecm.webengine.forms.validation;
 
-package org.nuxeo.ecm.webengine.forms;
-
-import java.util.Map;
-
-import org.nuxeo.ecm.core.api.Blob;
-import org.nuxeo.ecm.core.api.DocumentModel;
 
 /**
+ * 
+ * 
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  *
  */
-public interface FormInstance extends FormDataProvider {
+public class LengthValidator implements FieldValidator {
 
-    Object[] get(String key);
+    protected int min;
+    protected int max;
+    
+    public LengthValidator(int min, int max) {
+        this.min = min;
+        this.max = max;
+    }
 
-    Blob getBlob(String key);
+    public void validate(String value, Object decoded) throws ValidationException {
+        if (!validateLength(value.length())) {
+            throw new ValidationException();
+        }
+    }
 
-    Blob[] getBlobs(String key);
-
-    Map<String, String[]> getFormFields();
-
-    Map<String, Blob[]> getBlobFields();
-
-    void fillDocument(DocumentModel doc);
+    protected boolean validateLength(int len) {
+        return len > min && len < max;
+    }
 
 }

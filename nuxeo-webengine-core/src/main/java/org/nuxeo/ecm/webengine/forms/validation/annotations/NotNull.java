@@ -13,41 +13,27 @@
  *
  * Contributors:
  *     bstefanescu
- *
- * $Id$
  */
+package org.nuxeo.ecm.webengine.forms.validation.annotations;
 
-package org.nuxeo.ecm.webengine.forms.validation;
-
-
-
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  *
  */
-public class ErrorStatus extends AbstractStatus {
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+public @interface NotNull {
 
-    public ErrorStatus(String field) {
-        this (field, "");
-    }
+    /**
+     * A default value if null (empty)
+     * @return
+     */
+    String value() default "";
 
-    public ErrorStatus(String field, String message) {
-        this.field = field;
-        this.message = message;
-    }
-
-    public Status[] getChildren() {
-        return null;
-    }
-
-    public boolean isMultiStatus() {
-        return false;
-    }
-
-    @Override
-    public String toString() {
-        return isOk ? "OK" : "KO: "+getMessage();
-    }
 
 }

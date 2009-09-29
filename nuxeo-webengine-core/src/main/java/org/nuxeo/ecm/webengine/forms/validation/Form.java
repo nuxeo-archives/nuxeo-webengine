@@ -13,96 +13,39 @@
  *
  * Contributors:
  *     bstefanescu
- *
- * $Id$
  */
-
 package org.nuxeo.ecm.webengine.forms.validation;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
-import org.nuxeo.common.xmap.annotation.XNode;
-import org.nuxeo.common.xmap.annotation.XNodeList;
-import org.nuxeo.common.xmap.annotation.XObject;
-import org.nuxeo.ecm.webengine.forms.FormInstance;
+import org.nuxeo.ecm.webengine.forms.FormDataProvider;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  *
  */
-@XObject("form")
-public class Form {
-
-    @XNode("@id")
-    protected String id;
-
-    @XNodeList(value="field", componentType=Field.class, type=ArrayList.class)
-    void setFields(List<Field> fields) {
-        for (Field field : fields) {
-            addField(field);
-        }
-    }
-
-    protected final Map<String, Field> fields = new HashMap<String, Field>();
-
-
-    public Form() {
-    }
-
-    public Form(String id) {
-        this.id = id;
-    }
-
-    public void addField(Field field) {
-        field.setForm(this);
-        fields.put(field.getId(), field);
-    }
-
-    public Map<String, Field> getFields() {
-        return fields;
-    }
-
-    public Field getField(String id) {
-        return fields.get(id);
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public Status validate(FormInstance data) {
-        return validate(data, true);
-    }
-
-    public Status validate(FormInstance data, boolean collectAll) {
-        MultiStatus multiStatus = new MultiStatus();
-        Collection<String>keys = data.getKeys();
-        for (String key : keys) {
-            Field field = fields.get(key);
-            if (field == null) {
-                continue;
-            }
-            Object[] values = data.get(key);
-            for (Object value : values) {
-                if (value instanceof String) {
-                    Status status = field.validate(data, value.toString());
-                    if (status != Status.OK) {
-                        if (collectAll) {
-                            multiStatus.add(status);
-                        } else {
-                            return status;
-                        }
-                    }
-                } else { //TODO
-                    System.err.println("Blobs are not yet validated");
-                }
-            }
-        }
-        return multiStatus;
-    }
-
+public interface Form {
+    //TODO remove it?    
+    Collection<String> unknownKeys();    
+ 
+    /**
+     * Before using the form, implementors must ensure this method is called to
+     * initialize form data, otherwise NPE will be thrown.
+     * 
+     * This method must never be called by clients. It is internal to 
+     * validation implementation and should be called only by implementors when creating a form.
+     * @param data the form data source
+     * @param proxy the proxy to the user form
+     * @throws ValidationException
+     */
+    void load(FormDataProvider data, Form proxy) throws ValidationException;
+    
+    /**
+     * Get the form fields as submitted by the client. 
+     * The fields are present even if the form is not valid 
+     * @return the form fields or an empty map if none
+     */
+    Map<String, String[]> fields();
+    
 }

@@ -13,37 +13,28 @@
  *
  * Contributors:
  *     bstefanescu
- *
- * $Id$
  */
+package org.nuxeo.ecm.webengine.forms.validation;
 
-package org.nuxeo.ecm.webengine.forms.validation.constraints;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import org.nuxeo.ecm.webengine.forms.validation.Constraint;
 
 /**
+ * 
+ * 
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  *
  */
-public abstract class ContainerConstraint extends AbstractConstraint {
+public class ExactLengthValidator implements FieldValidator {
 
-    protected final List<Constraint> children = new ArrayList<Constraint>();
-
-    @Override
-    public void add(Constraint constraint) {
-        children.add(constraint);
+    protected int length;
+    
+    public ExactLengthValidator(int length) {
+        this.length = length;
     }
 
-    @Override
-    public boolean isContainer() {
-        return true;
-    }
-
-    public List<Constraint> getChildren() {
-        return children;
+    public void validate(String value, Object decoded) throws ValidationException {
+        if (value.length()!= length) {
+            throw new ValidationException();
+        }
     }
 
 }

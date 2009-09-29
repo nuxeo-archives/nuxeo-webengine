@@ -13,33 +13,17 @@
  *
  * Contributors:
  *     bstefanescu
- *
- * $Id$
  */
+package org.nuxeo.ecm.webengine.forms.validation;
 
-package org.nuxeo.ecm.webengine.forms;
-
-import java.util.Map;
-
-import org.nuxeo.ecm.core.api.Blob;
-import org.nuxeo.ecm.core.api.DocumentModel;
+import org.nuxeo.ecm.webengine.forms.FormDataProvider;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  *
  */
-public interface FormInstance extends FormDataProvider {
+public interface FormValidator {
 
-    Object[] get(String key);
-
-    Blob getBlob(String key);
-
-    Blob[] getBlobs(String key);
-
-    Map<String, String[]> getFormFields();
-
-    Map<String, Blob[]> getBlobFields();
-
-    void fillDocument(DocumentModel doc);
-
+    void validate(FormDataProvider data, Form form) throws ValidationException;
+    
 }
