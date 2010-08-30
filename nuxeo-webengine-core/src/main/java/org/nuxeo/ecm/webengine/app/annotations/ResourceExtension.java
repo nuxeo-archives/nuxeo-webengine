@@ -37,13 +37,13 @@ import org.nuxeo.ecm.webengine.app.extensions.ExtensibleResource;
 public @interface ResourceExtension {
 
     /**
-     * The target resource where this resource should be contributed
-     * @return
+     * The target resource where this resource should be contributed.
      */
     Class<? extends ExtensibleResource> target();
     
     /**
-     * The path segment where this resource should be installed. 
+     * The path segment where this resource should be installed.
+     *
      * @return the key
      */
     String key();
@@ -52,14 +52,12 @@ public @interface ResourceExtension {
      * A label to be displayed in the link that points to the contributed resource.
      * If not specified the label will be fetched from i18n messages of the contribution module using
      * the key {class_name}.label where class_name is the absolute name of the contribution class.   
-     * @return
      */
     String label() default "";
     
     /**
      * The contribution categories.
      * Categories can be shared between contributions
-     * @return the type 
      */
     String[] categories() default {};
     
