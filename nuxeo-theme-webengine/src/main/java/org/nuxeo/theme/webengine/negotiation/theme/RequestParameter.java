@@ -22,7 +22,8 @@ import org.nuxeo.theme.negotiation.Scheme;
 public final class RequestParameter implements Scheme {
 
     public String getOutcome(final Object context) {
-        final String path = ((WebContext) context).getRequest().getParameter("theme");
+        final String path = ((WebContext) context).getRequest().getParameter(
+                "theme");
         if (path == null) {
             return null;
         }

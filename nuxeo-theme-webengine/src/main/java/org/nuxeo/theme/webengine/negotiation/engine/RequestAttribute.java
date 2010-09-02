@@ -22,7 +22,8 @@ import org.nuxeo.theme.types.TypeFamily;
 public final class RequestAttribute implements Scheme {
 
     public String getOutcome(final Object context) {
-        final String engineName = (String) ((WebContext) context).getRequest().getAttribute("org.nuxeo.theme.engine");
+        final String engineName = (String) ((WebContext) context).getRequest().getAttribute(
+                "org.nuxeo.theme.engine");
         if (engineName == null) {
             return null;
         }

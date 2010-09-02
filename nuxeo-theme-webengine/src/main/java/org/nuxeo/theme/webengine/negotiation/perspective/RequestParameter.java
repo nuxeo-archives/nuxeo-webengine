@@ -21,7 +21,8 @@ import org.nuxeo.theme.perspectives.PerspectiveManager;
 public final class RequestParameter implements Scheme {
 
     public String getOutcome(final Object context) {
-        final String perspectiveName = ((WebContext) context).getRequest().getParameter("perspective");
+        final String perspectiveName = ((WebContext) context).getRequest().getParameter(
+                "perspective");
         if (perspectiveName == null) {
             return null;
         }

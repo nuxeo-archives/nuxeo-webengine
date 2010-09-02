@@ -19,6 +19,7 @@ import org.nuxeo.theme.negotiation.AbstractNegotiator;
 
 public final class WebNegotiator extends AbstractNegotiator {
 
+    @Override
     public String getTemplateEngineName() {
         return "freemarker";
     }

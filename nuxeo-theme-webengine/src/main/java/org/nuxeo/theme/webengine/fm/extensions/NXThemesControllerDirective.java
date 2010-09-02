@@ -19,7 +19,6 @@
 
 package org.nuxeo.theme.webengine.fm.extensions;
 
-
 /**
  * @author <a href="mailto:jmo@chalmers.se">Jean-Marc Orliaguet</a>
  *
