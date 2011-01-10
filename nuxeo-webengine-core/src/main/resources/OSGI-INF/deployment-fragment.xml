@@ -4,14 +4,6 @@
   <extension target="web#STD-AUTH-FILTER">
 
     <filter-mapping>
-            <filter-name>NuxeoOAuthFilter
-            </filter-name>
-            <url-pattern>/site/*</url-pattern>
-            <dispatcher>REQUEST</dispatcher>
-            <dispatcher>FORWARD</dispatcher>
-    </filter-mapping>
-
-    <filter-mapping>
       <filter-name>NuxeoAuthenticationFilter</filter-name>
       <url-pattern>/site/*</url-pattern>
       <dispatcher>REQUEST</dispatcher>
