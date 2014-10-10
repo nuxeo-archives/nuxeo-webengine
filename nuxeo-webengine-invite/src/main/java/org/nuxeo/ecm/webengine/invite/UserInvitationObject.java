@@ -55,6 +55,7 @@ public class UserInvitationObject extends ModuleRoot {
 
         FormData formData = getContext().getForm();
         String requestId = formData.getString("RequestId");
+        String configurationName = formData.getString("ConfigurationName");
         String password = formData.getString("Password");
         String passwordConfirmation = formData.getString("PasswordConfirmation");
 
@@ -95,7 +96,9 @@ public class UserInvitationObject extends ModuleRoot {
             Map<String, Serializable> additionalInfo = buildAdditionalInfos();
 
             // Add the entered password to the document model
-            additionalInfo.put(UserRegistrationInfo.PASSWORD_FIELD, password);
+            additionalInfo.put(
+                    usr.getConfiguration(configurationName).getUserInfoPasswordField(),
+                    password);
             // Validate the creation of the user
             registrationData = usr.validateRegistration(requestId,
                     additionalInfo);
@@ -133,9 +136,10 @@ public class UserInvitationObject extends ModuleRoot {
     }
 
     @GET
-    @Path("enterpassword/{requestId}")
-    public Object validatePasswordForm(@PathParam("requestId")
-    String requestId) throws Exception {
+    @Path("enterpassword/{configurationName}/{requestId}")
+    public Object validatePasswordForm(
+            @PathParam("requestId") String configurationName,
+            @PathParam("requestId") String requestId) throws Exception {
 
         UserInvitationService usr = fetchService();
         try {
@@ -150,6 +154,7 @@ public class UserInvitationObject extends ModuleRoot {
 
         Map<String, String> data = new HashMap<String, String>();
         data.put("RequestId", requestId);
+        data.put("ConfigurationName", configurationName);
         return getView("EnterPassword").arg("data", data);
     }
 
